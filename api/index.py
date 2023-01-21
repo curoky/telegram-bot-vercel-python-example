@@ -33,37 +33,30 @@ from telegram.ext import Defaults, MessageHandler, filters
 
 # https://github.com/python-telegram-bot/python-telegram-bot/blob/master/examples/customwebhookbot.py
 
-telegram_app: Optional[TelegramApplication] = None
 
+def create_telegram_app(token: str) -> Optional[TelegramApplication]:
+    """ create_telegram_app """
 
-def setup():
-    """ setup logging setting and app """
-    logging.basicConfig(level=logging.DEBUG,
-                        stream=sys.stdout,
-                        force=True,
-                        format='%(asctime)s:%(name)s:%(levelname)s:%(message)s')
-    logging.info('setup start!')
-    settings = Dynaconf(environments=True, envvar_prefix=False)
-    global telegram_app
+    logging.info('create_telegram_app start!')
     try:
-        telegram_app = TelegramApplication.builder().token(settings['TELEGREM_TOKEN']).defaults(
-            Defaults(block=True)).build()
+        app = TelegramApplication.builder().token(token).defaults(Defaults(block=True)).build()
 
         async def echo(update: Update, context) -> None:
             """Echo the user message."""
             await update.message.reply_text(update.message.text)
 
-        telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-        asyncio.run(telegram_app.initialize())
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+        asyncio.run(app.initialize())
+        return app
     except Exception:
-        logging.error('setup error: %s', traceback.format_exc())
-    logging.info('setup finished!')
+        logging.error('create_telegram_app error: %s', traceback.format_exc())
+    return None
 
 
 async def setup_webhook(request: Request):
     """ setup webhook """
-    try:
-        if telegram_app:
+    if telegram_app:
+        try:
             web_hook_url = 'telegram-bot-vercel-python-example.vercel.app/api/index'
             res = await telegram_app.bot.delete_webhook(drop_pending_updates=True)
             logging.info('delete_webhook %s', res)
@@ -72,10 +65,10 @@ async def setup_webhook(request: Request):
             webhook_info = await telegram_app.bot.get_webhook_info()
             logging.info('get_webhook_info %s', str(webhook_info))
             return Response(content=b'success')
-        else:
-            return Response(content=b'telegram_app is None')
-    except Exception:
-        return Response(content=traceback.format_exc().encode('utf8'))
+        except Exception:
+            return Response(content=traceback.format_exc().encode('utf8'))
+    else:
+        return Response(content=b'telegram_app is None')
 
 
 async def receive_update(request: Request):
@@ -99,7 +92,14 @@ async def receive_update(request: Request):
     return Response(content=b'success')
 
 
-setup()
+logging.basicConfig(level=logging.DEBUG,
+                    stream=sys.stdout,
+                    force=True,
+                    format='%(asctime)s:%(name)s:%(levelname)s:%(message)s')
+
+settings = Dynaconf(environments=True, envvar_prefix=False)
+
+telegram_app = create_telegram_app(token=settings['TELEGREM_TOKEN'])
 
 app = Starlette(
     debug=True,
