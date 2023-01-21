@@ -4,9 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-python-telegram-bot = "*"
-dynaconf = "*"
-sanic = "==19.6.0"
+python-telegram-bot = ">=20.0"
+dynaconf = ">=3.1.11"
+# sanic = ">21.6.2"
+starlette = "==0.23.1"
 
 [dev-packages]
 
